@@ -42,6 +42,7 @@
 #define RADIO_PACKET_TYPE_ACK_PACKET             0
 #define RADIO_PACKET_TYPE_ADC_SENSOR_PACKET      1
 #define RADIO_PACKET_TYPE_DM_SENSOR_PACKET       2
+#define RADIO_PACKET_TYPE_BME280_SENSOR_PACKET   3
 
 struct PacketHeader {
     uint8_t sourceAddress;
@@ -60,6 +61,16 @@ struct DualModeSensorPacket {
     uint32_t time100MiliSec;
     uint8_t button;
     bool concLedToggle;
+};
+
+struct Bme280SensorPacket {
+    struct PacketHeader header;
+    int32_t     cpuTemp;
+    uint32_t    cpuVolt;
+
+    int32_t     bme280Temp;
+    uint32_t    bme280Pressure;
+    uint32_t    bme280Humidity;
 };
 
 struct AckPacket {

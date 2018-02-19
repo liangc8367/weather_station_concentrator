@@ -47,6 +47,7 @@ union ConcentratorPacket {
     struct PacketHeader header;
     struct AdcSensorPacket adcSensorPacket;
     struct DualModeSensorPacket dmSensorPacket;
+    struct Bme280SensorPacket bme280Packet;
 };
 
 typedef void (*ConcentratorRadio_PacketReceivedCallback)(union ConcentratorPacket* packet, int8_t rssi);

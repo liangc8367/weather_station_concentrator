@@ -74,10 +74,21 @@
 #define CONCENTRATOR_IDENTIFY_LED Board_PIN_LED1
 
 /***** Type declarations *****/
+
+struct Bme280SensorData {
+    int32_t     cpuTemp;
+    uint32_t    cpuVolt;
+
+    int32_t     bme280Temp;
+    uint32_t    bme280Pressure;
+    uint32_t    bme280Humidity;
+};
+
 struct AdcSensorNode {
     uint8_t address;
-    uint16_t latestAdcValue;
-    uint8_t button;
+//    uint16_t latestAdcValue;
+//    uint8_t button;
+    struct Bme280SensorData sensorData;
     int8_t latestRssi;
 };
 
@@ -212,42 +223,55 @@ static void concentratorTaskFunction(UArg arg0, UArg arg1)
 static void packetReceivedCallback(union ConcentratorPacket* packet, int8_t rssi)
 {
     /* If we recived an ADC sensor packet, for backward compatibility */
-    if (packet->header.packetType == RADIO_PACKET_TYPE_ADC_SENSOR_PACKET)
+    if (packet->header.packetType == RADIO_PACKET_TYPE_BME280_SENSOR_PACKET)
     {
-        /* Save the values */
         latestActiveAdcSensorNode.address = packet->header.sourceAddress;
-        latestActiveAdcSensorNode.latestAdcValue = packet->adcSensorPacket.adcValue;
-        latestActiveAdcSensorNode.button = 0; //no button value in ADC packet
         latestActiveAdcSensorNode.latestRssi = rssi;
+        latestActiveAdcSensorNode.sensorData.cpuTemp = packet->bme280Packet.cpuTemp;
+        latestActiveAdcSensorNode.sensorData.cpuVolt = packet->bme280Packet.cpuVolt;
+        latestActiveAdcSensorNode.sensorData.bme280Temp = packet->bme280Packet.bme280Temp;
+        latestActiveAdcSensorNode.sensorData.bme280Pressure = packet->bme280Packet.bme280Pressure;
+        latestActiveAdcSensorNode.sensorData.bme280Humidity = packet->bme280Packet.bme280Humidity;
 
         Event_post(concentratorEventHandle, CONCENTRATOR_EVENT_NEW_ADC_SENSOR_VALUE);
     }
-    /* If we recived an DualMode ADC sensor packet*/
-    else if(packet->header.packetType == RADIO_PACKET_TYPE_DM_SENSOR_PACKET)
-    {
-
-        /* Save the values */
-        latestActiveAdcSensorNode.address = packet->header.sourceAddress;
-        latestActiveAdcSensorNode.latestAdcValue = packet->dmSensorPacket.adcValue;
-        latestActiveAdcSensorNode.button = packet->dmSensorPacket.button;
-        latestActiveAdcSensorNode.latestRssi = rssi;
-
-        Event_post(concentratorEventHandle, CONCENTRATOR_EVENT_NEW_ADC_SENSOR_VALUE);
-
-        if( packet->dmSensorPacket.concLedToggle && (ledBlinkCnt == 0) )
-        {
-            /* Turn LED on */
-            PIN_setOutputValue(identifyLedPinHandle, CONCENTRATOR_IDENTIFY_LED, 1);
-
-            /* Setup timeout to blink LED */
-            Clock_setTimeout(ledBlinkClockHandle,
-                    CONCENTRATOR_LED_BLINK_ON_DURATION_MS * 1000 / Clock_tickPeriod);
-
-            /* Start sensor stub clock */
-            Clock_start(ledBlinkClockHandle);
-        }
-
-    }
+//
+//    if (packet->header.packetType == RADIO_PACKET_TYPE_ADC_SENSOR_PACKET)
+//    {
+//        /* Save the values */
+//        latestActiveAdcSensorNode.address = packet->header.sourceAddress;
+//        latestActiveAdcSensorNode.latestAdcValue = packet->adcSensorPacket.adcValue;
+//        latestActiveAdcSensorNode.button = 0; //no button value in ADC packet
+//        latestActiveAdcSensorNode.latestRssi = rssi;
+//
+//        Event_post(concentratorEventHandle, CONCENTRATOR_EVENT_NEW_ADC_SENSOR_VALUE);
+//    }
+//    /* If we recived an DualMode ADC sensor packet*/
+//    else if(packet->header.packetType == RADIO_PACKET_TYPE_DM_SENSOR_PACKET)
+//    {
+//
+//        /* Save the values */
+//        latestActiveAdcSensorNode.address = packet->header.sourceAddress;
+//        latestActiveAdcSensorNode.latestAdcValue = packet->dmSensorPacket.adcValue;
+//        latestActiveAdcSensorNode.button = packet->dmSensorPacket.button;
+//        latestActiveAdcSensorNode.latestRssi = rssi;
+//
+//        Event_post(concentratorEventHandle, CONCENTRATOR_EVENT_NEW_ADC_SENSOR_VALUE);
+//
+//        if( packet->dmSensorPacket.concLedToggle && (ledBlinkCnt == 0) )
+//        {
+//            /* Turn LED on */
+//            PIN_setOutputValue(identifyLedPinHandle, CONCENTRATOR_IDENTIFY_LED, 1);
+//
+//            /* Setup timeout to blink LED */
+//            Clock_setTimeout(ledBlinkClockHandle,
+//                    CONCENTRATOR_LED_BLINK_ON_DURATION_MS * 1000 / Clock_tickPeriod);
+//
+//            /* Start sensor stub clock */
+//            Clock_start(ledBlinkClockHandle);
+//        }
+//
+//    }
 }
 
 static uint8_t isKnownNodeAddress(uint8_t address) {
@@ -269,9 +293,8 @@ static void updateNode(struct AdcSensorNode* node) {
     for (i = 0; i < CONCENTRATOR_MAX_NODES; i++) {
         if (knownSensorNodes[i].address == node->address)
         {
-            knownSensorNodes[i].latestAdcValue = node->latestAdcValue;
+            knownSensorNodes[i].sensorData = node->sensorData;
             knownSensorNodes[i].latestRssi = node->latestRssi;
-            knownSensorNodes[i].button = node->button;
             break;
         }
     }
@@ -290,35 +313,39 @@ static void addNewNode(struct AdcSensorNode* node) {
 
 static void updateLcd(void) {
     struct AdcSensorNode* nodePointer = knownSensorNodes;
-    uint8_t currentLcdLine;
+//    uint8_t currentLcdLine;
 
     /* Clear the display and write header on first line */
-    Display_clear(hDisplayLcd);
-    Display_printf(hDisplayLcd, 0, 0, "Nodes Value SW  RSSI");
+//    Display_clear(hDisplayLcd);
+//    Display_printf(hDisplayLcd, 0, 0, "Nodes Value SW  RSSI");
 
     //clear screen, put cuser to beggining of terminal and print the header
     Display_printf(hDisplaySerial, 0, 0, "\033[2J \033[0;0HNodes   Value   SW    RSSI");
 
     /* Start on the second line */
-    currentLcdLine = 1;
+//    currentLcdLine = 1;
 
     /* Write one line per node */
     while ((nodePointer < &knownSensorNodes[CONCENTRATOR_MAX_NODES]) &&
-          (nodePointer->address != 0) &&
-          (currentLcdLine < CONCENTRATOR_DISPLAY_LINES))
+          (nodePointer->address != 0)
+          )
     {
-        /* print to LCD */
-        Display_printf(hDisplayLcd, currentLcdLine, 0, "0x%02x  0x%02x  %d   %04d",
-                nodePointer->address, nodePointer->latestAdcValue, nodePointer->button,
-                nodePointer->latestRssi);
+//        /* print to LCD */
+//        Display_printf(hDisplayLcd, currentLcdLine, 0, "0x%02x  0x%02x  %d   %04d",
+//                nodePointer->address, nodePointer->latestAdcValue, nodePointer->button,
+//                nodePointer->latestRssi);
 
         /* print to UART */
-        Display_printf(hDisplaySerial, 0, 0, "0x%02x    0x%02x    %d    %04d",
-                nodePointer->address, nodePointer->latestAdcValue, nodePointer->button,
-                nodePointer->latestRssi);
+        Display_printf(hDisplaySerial, 0, 0, "addr=0x%02x, rssi=%d, ",
+                nodePointer->address, nodePointer->latestRssi);
+
+        struct Bme280SensorData *sensorData = &nodePointer->sensorData;
+        Display_printf(hDisplaySerial, 0, 0, "temp = %ld, pressure = %ld, humidity = %ld, ",
+                       sensorData->bme280Temp, sensorData->bme280Pressure, sensorData->bme280Humidity);
+        Display_printf(hDisplaySerial, 0, 0, "CPU Temp = %i, Voltage = %.2f\n", sensorData->cpuTemp, sensorData->cpuVolt/256.0);
 
         nodePointer++;
-        currentLcdLine++;
+//        currentLcdLine++;
     }
 }
 

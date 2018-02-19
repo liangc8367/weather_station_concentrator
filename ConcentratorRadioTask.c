@@ -236,34 +236,69 @@ static void rxDoneCallback(EasyLink_RxPacket * rxPacket, EasyLink_Status status)
         /* Check that this is a valid packet */
         tmpRxPacket = (union ConcentratorPacket*)(rxPacket->payload);
 
-        /* If this is a known packet */
-        if (tmpRxPacket->header.packetType == RADIO_PACKET_TYPE_ADC_SENSOR_PACKET)
+//        /* If this is a known packet */
+//        if (tmpRxPacket->header.packetType == RADIO_PACKET_TYPE_ADC_SENSOR_PACKET)
+//        {
+//            /* Save packet */
+//            latestRxPacket.header.sourceAddress = rxPacket->payload[0];
+//            latestRxPacket.header.packetType = rxPacket->payload[1];
+//            latestRxPacket.adcSensorPacket.adcValue = (rxPacket->payload[2] << 8) | rxPacket->payload[3];
+//
+//            /* Signal packet received */
+//            Event_post(radioOperationEventHandle, RADIO_EVENT_VALID_PACKET_RECEIVED);
+//        }
+//        else
+        if (tmpRxPacket->header.packetType == RADIO_PACKET_TYPE_BME280_SENSOR_PACKET)
         {
-            /* Save packet */
+            /* deserialize rxed packet */
             latestRxPacket.header.sourceAddress = rxPacket->payload[0];
             latestRxPacket.header.packetType = rxPacket->payload[1];
-            latestRxPacket.adcSensorPacket.adcValue = (rxPacket->payload[2] << 8) | rxPacket->payload[3];
+
+            latestRxPacket.bme280Packet.cpuTemp = rxPacket->payload[2] << 24 |
+                                                    rxPacket->payload[3] << 16 |
+                                                    rxPacket->payload[4] << 8 |
+                                                    rxPacket->payload[5];
+
+            latestRxPacket.bme280Packet.cpuVolt = rxPacket->payload[6] << 24 |
+                                                    rxPacket->payload[7] << 16 |
+                                                    rxPacket->payload[8] << 8 |
+                                                    rxPacket->payload[9];
+
+            latestRxPacket.bme280Packet.bme280Temp = rxPacket->payload[10] << 24 |
+                                                    rxPacket->payload[11] << 16 |
+                                                    rxPacket->payload[12] << 8 |
+                                                    rxPacket->payload[13];
+
+            latestRxPacket.bme280Packet.bme280Pressure = rxPacket->payload[14] << 24 |
+                                                    rxPacket->payload[15] << 16 |
+                                                    rxPacket->payload[16] << 8 |
+                                                    rxPacket->payload[17];
+
+            latestRxPacket.bme280Packet.bme280Humidity = rxPacket->payload[18] << 24 |
+                                                    rxPacket->payload[19] << 16 |
+                                                    rxPacket->payload[20] << 8 |
+                                                    rxPacket->payload[21];
 
             /* Signal packet received */
             Event_post(radioOperationEventHandle, RADIO_EVENT_VALID_PACKET_RECEIVED);
         }
-        else if (tmpRxPacket->header.packetType == RADIO_PACKET_TYPE_DM_SENSOR_PACKET)
-        {
-            /* Save packet */
-            latestRxPacket.header.sourceAddress = rxPacket->payload[0];
-            latestRxPacket.header.packetType = rxPacket->payload[1];
-            latestRxPacket.dmSensorPacket.adcValue = (rxPacket->payload[2] << 8) | rxPacket->payload[3];
-            latestRxPacket.dmSensorPacket.batt = (rxPacket->payload[4] << 8) | rxPacket->payload[5];
-            latestRxPacket.dmSensorPacket.time100MiliSec = (rxPacket->payload[6] << 24) |
-                                                           (rxPacket->payload[7] << 16) |
-                                                           (rxPacket->payload[8] << 8) |
-                                                            rxPacket->payload[9];
-            latestRxPacket.dmSensorPacket.button = rxPacket->payload[10];
-            latestRxPacket.dmSensorPacket.concLedToggle = rxPacket->payload[11];
-
-            /* Signal packet received */
-            Event_post(radioOperationEventHandle, RADIO_EVENT_VALID_PACKET_RECEIVED);
-        }
+//        else if (tmpRxPacket->header.packetType == RADIO_PACKET_TYPE_DM_SENSOR_PACKET)
+//        {
+//            /* Save packet */
+//            latestRxPacket.header.sourceAddress = rxPacket->payload[0];
+//            latestRxPacket.header.packetType = rxPacket->payload[1];
+//            latestRxPacket.dmSensorPacket.adcValue = (rxPacket->payload[2] << 8) | rxPacket->payload[3];
+//            latestRxPacket.dmSensorPacket.batt = (rxPacket->payload[4] << 8) | rxPacket->payload[5];
+//            latestRxPacket.dmSensorPacket.time100MiliSec = (rxPacket->payload[6] << 24) |
+//                                                           (rxPacket->payload[7] << 16) |
+//                                                           (rxPacket->payload[8] << 8) |
+//                                                            rxPacket->payload[9];
+//            latestRxPacket.dmSensorPacket.button = rxPacket->payload[10];
+//            latestRxPacket.dmSensorPacket.concLedToggle = rxPacket->payload[11];
+//
+//            /* Signal packet received */
+//            Event_post(radioOperationEventHandle, RADIO_EVENT_VALID_PACKET_RECEIVED);
+//        }
         else
         {
             /* Signal invalid packet received */
