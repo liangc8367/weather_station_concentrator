@@ -55,6 +55,10 @@
 #include "ConcentratorRadioTask.h"
 #include "ConcentratorTask.h"
 
+#include <ti/sysbios/knl/Task.h>
+
+void Mytask_init();
+
 /*
  *  ======== main ========
  */
@@ -72,8 +76,40 @@ int main(void)
     ConcentratorRadioTask_init();
     ConcentratorTask_init();
 
+    Mytask_init();
+
     /* Start BIOS */
     BIOS_start();
 
     return (0);
 }
+
+
+static Task_Params MytaskParams;
+Task_Struct Mytask;    /* not static so you can see in ROV */
+static uint8_t MytaskStack[1024];
+
+
+void My_function(/*UArg arg0, UArg arg1*/)
+{
+    int i=0;
+    while(true)
+    {
+        sleep(5);
+        i++;
+
+    }
+}
+
+void Mytask_init()
+{
+
+    /* Create the concentrator radio protocol task */
+    Task_Params_init(&MytaskParams);
+    MytaskParams.stackSize = 1024;
+    MytaskParams.priority = 3;
+    MytaskParams.stack = &MytaskStack;
+    Task_construct(&Mytask, My_function, &MytaskParams, NULL);
+
+}
+
