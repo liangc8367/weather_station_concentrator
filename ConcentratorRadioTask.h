@@ -94,10 +94,15 @@ enum ConcentratorRadioOperationStatus {
 
 //typedef void (*ConcentratorRadio_PacketReceivedCallback)(union ConcentratorPacket* packet, int8_t rssi);
 
+typedef void (*sensorDataReceived)(const struct PacketHeader *, const struct IoTSensorData *, int8_t rssi);
+typedef void (*sensorConfigReceived)(const struct PacketHeader *, const struct IoTSensorConfig *, int8_t rssi);
+
 /* Create the ConcentratorRadioTask and creates all TI-RTOS objects */
 void ConcentratorRadioTask_init(void);
 
 /* Register the packet received callback */
 //void ConcentratorRadioTask_registerPacketReceivedCallback(ConcentratorRadio_PacketReceivedCallback callback);
+void registerSensorDataReceived(sensorDataReceived cb);
+void registerSensorConfigReceived(sensorConfigReceived cb);
 
 #endif /* TASKS_CONCENTRATORRADIOTASKTASK_H_ */

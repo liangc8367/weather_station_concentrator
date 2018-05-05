@@ -86,10 +86,14 @@ static Event_Handle radioOperationEventHandle;
 
 //static ConcentratorRadio_PacketReceivedCallback packetReceivedCallback;
 //static union ConcentratorPacket latestRxPacket;
-static EasyLink_TxPacket txPacket;
+//static EasyLink_TxPacket txPacket;
 //static struct AckPacket ackPacket;
 //static uint8_t concentratorAddress;
-static int8_t latestRssi;
+//static int8_t latestRssi;
+
+sensorDataReceived gSensorDataCb = NULL;
+sensorConfigReceived gSensorConfigCb = NULL;
+static EasyLink_RxPacket gRxedPacket; //cached rxed packet
 
 
 /***** Prototypes *****/
@@ -97,6 +101,7 @@ static void concentratorRadioTaskFunction(UArg arg0, UArg arg1);
 static void rxDoneCallback(EasyLink_RxPacket * rxPacket, EasyLink_Status status);
 //static void notifyPacketReceived(union ConcentratorPacket* latestRxPacket);
 //static void sendAck(uint8_t latestSourceAddress);
+static void notifyPacketReceived();
 
 /* Pin driver handle */
 static PIN_Handle ledPinHandle;
@@ -110,6 +115,11 @@ PIN_Config ledPinTable[] = {
 
 // Public MAC address of the IoT hub.
 uint64_t iotHubAddr = 0;
+
+// some stats
+uint64_t gRxedSensorDataCnt = 0;
+uint64_t gRxedSensorConfCnt = 0;
+uint64_t gRxedUnknownCnt = 0;
 
 /***** Function definitions *****/
 void ConcentratorRadioTask_init(void)
@@ -181,6 +191,7 @@ static void concentratorRadioTaskFunction(UArg arg0, UArg arg1)
 //
 //            /* Call packet received callback */
 //            notifyPacketReceived(&latestRxPacket);
+            notifyPacketReceived();
 
             /* Go back to RX */
             if(EasyLink_receiveAsync(rxDoneCallback, 0) != EasyLink_Status_Success) {
@@ -219,100 +230,60 @@ static void concentratorRadioTaskFunction(UArg arg0, UArg arg1)
 //    }
 //}
 
-//static void notifyPacketReceived(union ConcentratorPacket* latestRxPacket)
-//{
-//    if (packetReceivedCallback)
-//    {
-//        packetReceivedCallback(latestRxPacket, latestRssi);
-//    }
-//}
+static void notifyPacketReceived()
+{
+    int8_t rssi;
+    struct PacketHeader header;
+    struct IoTSensorData sensorData;
+    struct IoTSensorConfig sensorConfig;
+
+    rssi = (int8_t)gRxedPacket.rssi;
+
+    // Deserialize the rxed packet
+    memcpy(&header._sourceAddress, gRxedPacket.payload, sizeof(uint64_t));
+    header._packetType = gRxedPacket.payload[sizeof(uint64_t)];
+
+    switch(header._packetType) {
+    case RADIO_PACKET_TYPE_SENSOR_DATA:
+        gRxedSensorDataCnt++;
+        memcpy(&sensorData, gRxedPacket.payload + OTA_PACKET_HEADER_SIZE, sizeof(struct IoTSensorData));
+        if( gSensorDataCb ) {
+            gSensorDataCb( &header, &sensorData, rssi );
+        }
+        break;
+    case RADIO_PACKET_TYPE_SENSOR_CONF:
+        gRxedSensorConfCnt++;
+        memcpy(&sensorConfig, gRxedPacket.payload + OTA_PACKET_HEADER_SIZE, sizeof(struct IoTSensorConfig));
+        if( gSensorConfigCb ) {
+            gSensorConfigCb( &header, &sensorConfig, rssi);
+        }
+        break;
+    default:
+        gRxedUnknownCnt++;
+    }
+}
 
 static void rxDoneCallback(EasyLink_RxPacket * rxPacket, EasyLink_Status status)
 {
 //    union ConcentratorPacket* tmpRxPacket;
 
     /* If we received a packet successfully */
-    if (status == EasyLink_Status_Success)
-    {
-        /* Save the latest RSSI, which is later sent to the receive callback */
-        latestRssi = (int8_t)rxPacket->rssi;
+    if (status == EasyLink_Status_Success) {
+        memcpy(&gRxedPacket, rxPacket, sizeof(EasyLink_RxPacket));
 
-#if 0
-        /* Check that this is a valid packet */
-        tmpRxPacket = (union ConcentratorPacket*)(rxPacket->payload);
-
-//        /* If this is a known packet */
-//        if (tmpRxPacket->header.packetType == RADIO_PACKET_TYPE_ADC_SENSOR_PACKET)
-//        {
-//            /* Save packet */
-//            latestRxPacket.header.sourceAddress = rxPacket->payload[0];
-//            latestRxPacket.header.packetType = rxPacket->payload[1];
-//            latestRxPacket.adcSensorPacket.adcValue = (rxPacket->payload[2] << 8) | rxPacket->payload[3];
-//
-//            /* Signal packet received */
-//            Event_post(radioOperationEventHandle, RADIO_EVENT_VALID_PACKET_RECEIVED);
-//        }
-//        else
-        if (tmpRxPacket->header.packetType == RADIO_PACKET_TYPE_BME280_SENSOR_PACKET)
-        {
-            /* deserialize rxed packet */
-            latestRxPacket.header.sourceAddress = rxPacket->payload[0];
-            latestRxPacket.header.packetType = rxPacket->payload[1];
-
-            latestRxPacket.bme280Packet.cpuTemp = rxPacket->payload[2] << 24 |
-                                                    rxPacket->payload[3] << 16 |
-                                                    rxPacket->payload[4] << 8 |
-                                                    rxPacket->payload[5];
-
-            latestRxPacket.bme280Packet.cpuVolt = rxPacket->payload[6] << 24 |
-                                                    rxPacket->payload[7] << 16 |
-                                                    rxPacket->payload[8] << 8 |
-                                                    rxPacket->payload[9];
-
-            latestRxPacket.bme280Packet.bme280Temp = rxPacket->payload[10] << 24 |
-                                                    rxPacket->payload[11] << 16 |
-                                                    rxPacket->payload[12] << 8 |
-                                                    rxPacket->payload[13];
-
-            latestRxPacket.bme280Packet.bme280Pressure = rxPacket->payload[14] << 24 |
-                                                    rxPacket->payload[15] << 16 |
-                                                    rxPacket->payload[16] << 8 |
-                                                    rxPacket->payload[17];
-
-            latestRxPacket.bme280Packet.bme280Humidity = rxPacket->payload[18] << 24 |
-                                                    rxPacket->payload[19] << 16 |
-                                                    rxPacket->payload[20] << 8 |
-                                                    rxPacket->payload[21];
-#endif
-            /* Signal packet received */
-            Event_post(radioOperationEventHandle, RADIO_EVENT_VALID_PACKET_RECEIVED);
-        }
-//        else if (tmpRxPacket->header.packetType == RADIO_PACKET_TYPE_DM_SENSOR_PACKET)
-//        {
-//            /* Save packet */
-//            latestRxPacket.header.sourceAddress = rxPacket->payload[0];
-//            latestRxPacket.header.packetType = rxPacket->payload[1];
-//            latestRxPacket.dmSensorPacket.adcValue = (rxPacket->payload[2] << 8) | rxPacket->payload[3];
-//            latestRxPacket.dmSensorPacket.batt = (rxPacket->payload[4] << 8) | rxPacket->payload[5];
-//            latestRxPacket.dmSensorPacket.time100MiliSec = (rxPacket->payload[6] << 24) |
-//                                                           (rxPacket->payload[7] << 16) |
-//                                                           (rxPacket->payload[8] << 8) |
-//                                                            rxPacket->payload[9];
-//            latestRxPacket.dmSensorPacket.button = rxPacket->payload[10];
-//            latestRxPacket.dmSensorPacket.concLedToggle = rxPacket->payload[11];
-//
-//            /* Signal packet received */
-//            Event_post(radioOperationEventHandle, RADIO_EVENT_VALID_PACKET_RECEIVED);
-//        }
-//        else
-//        {
-//            /* Signal invalid packet received */
-//            Event_post(radioOperationEventHandle, RADIO_EVENT_INVALID_PACKET_RECEIVED);
-//        }
-//    }
-    else
-    {
+        /* Signal packet received */
+        Event_post(radioOperationEventHandle, RADIO_EVENT_VALID_PACKET_RECEIVED);
+    } else {
         /* Signal invalid packet received */
         Event_post(radioOperationEventHandle, RADIO_EVENT_INVALID_PACKET_RECEIVED);
     }
+}
+
+void registerSensorDataReceived(sensorDataReceived cb)
+{
+    gSensorDataCb = cb;
+}
+void registerSensorConfigReceived(sensorConfigReceived cb)
+{
+    gSensorConfigCb = cb;
 }

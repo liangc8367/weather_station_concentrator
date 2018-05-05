@@ -124,11 +124,17 @@ static uint8_t ledBlinkCnt;
 /***** Prototypes *****/
 static void concentratorTaskFunction(UArg arg0, UArg arg1);
 //static void packetReceivedCallback(union ConcentratorPacket* packet, int8_t rssi);
+static void sensorDataRxedCallback(const struct PacketHeader * header, const struct IoTSensorData * data, int8_t rssi);
 static void updateLcd(void);
 static void addNewNode(struct AdcSensorNode* node);
 static void updateNode(struct AdcSensorNode* node);
 static uint8_t isKnownNodeAddress(uint8_t address);
 static void ledBlinkClockCb(UArg arg0);
+static void printRxedSensorData();
+
+static struct PacketHeader gHeader;
+static struct IoTSensorData gSensorData;
+static uint8_t  gRssi;
 
 /***** Function definitions *****/
 void ConcentratorTask_init(void) {
@@ -197,6 +203,7 @@ static void concentratorTaskFunction(UArg arg0, UArg arg1)
 
 //    /* Register a packet received callback with the radio task */
 //    ConcentratorRadioTask_registerPacketReceivedCallback(packetReceivedCallback);
+    registerSensorDataReceived(sensorDataRxedCallback);
 
     /* Enter main task loop */
     while(1) {
@@ -205,17 +212,18 @@ static void concentratorTaskFunction(UArg arg0, UArg arg1)
 
         /* If we got a new ADC sensor value */
         if(events & CONCENTRATOR_EVENT_NEW_ADC_SENSOR_VALUE) {
-            /* If we knew this node from before, update the value */
-            if(isKnownNodeAddress(latestActiveAdcSensorNode.address)) {
-                updateNode(&latestActiveAdcSensorNode);
-            }
-            else {
-                /* Else add it */
-                addNewNode(&latestActiveAdcSensorNode);
-            }
-
-            /* Update the values on the LCD */
-            updateLcd();
+//            /* If we knew this node from before, update the value */
+//            if(isKnownNodeAddress(latestActiveAdcSensorNode.address)) {
+//                updateNode(&latestActiveAdcSensorNode);
+//            }
+//            else {
+//                /* Else add it */
+//                addNewNode(&latestActiveAdcSensorNode);
+//            }
+//
+//            /* Update the values on the LCD */
+//            updateLcd();
+            printRxedSensorData();
         }
     }
 }
@@ -236,6 +244,14 @@ static void concentratorTaskFunction(UArg arg0, UArg arg1)
 //        Event_post(concentratorEventHandle, CONCENTRATOR_EVENT_NEW_ADC_SENSOR_VALUE);
 //    }
 //}
+
+void sensorDataRxedCallback(const struct PacketHeader * header, const struct IoTSensorData * data, int8_t rssi)
+{
+    memcpy(&gHeader, header, sizeof(struct PacketHeader));
+    memcpy(&gSensorData, data, sizeof(struct IoTSensorData));
+    gRssi = rssi;
+    Event_post(concentratorEventHandle, CONCENTRATOR_EVENT_NEW_ADC_SENSOR_VALUE);
+}
 
 static uint8_t isKnownNodeAddress(uint8_t address) {
     uint8_t found = 0;
@@ -345,4 +361,18 @@ static void ledBlinkClockCb(UArg arg0)
         PIN_setOutputValue(identifyLedPinHandle, CONCENTRATOR_IDENTIFY_LED, 0);
         ledBlinkCnt = 0;
     }
+}
+
+
+void printRxedSensorData()
+{
+    uint8_t *macAddr = (uint8_t *)&gHeader._sourceAddress;
+    Display_printf(hDisplaySerial, 0, 0, "[addr, rssi, cpu-temp, cpu-volt, temp, pre, hum]: 0x%02x%02x%02x%02x%02x%02x%02x%02x, %d, %ld, %ld, %ld, %ld, %ld",
+                   macAddr[0], macAddr[1], macAddr[2], macAddr[3],
+                   macAddr[4], macAddr[5], macAddr[6], macAddr[7],
+                   gRssi,
+                    gSensorData._cpuTemp, gSensorData._cpuVolt,
+                    gSensorData._bme280Temp, gSensorData._bme280Pressure, gSensorData._bme280Humidity
+                    );
+
 }
