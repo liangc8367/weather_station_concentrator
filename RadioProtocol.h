@@ -36,9 +36,10 @@
 #include "stdint.h"
 #include "easylink/EasyLink.h"
 
-#define RADIO_CONCENTRATOR_ADDRESS     0x00
-#define RADIO_EASYLINK_MODULATION     EasyLink_Phy_Custom
+//#define RADIO_CONCENTRATOR_ADDRESS     0x00
+//#define RADIO_EASYLINK_MODULATION     EasyLink_Phy_Custom
 
+#if 0
 #define RADIO_PACKET_TYPE_ACK_PACKET             0
 #define RADIO_PACKET_TYPE_ADC_SENSOR_PACKET      1
 #define RADIO_PACKET_TYPE_DM_SENSOR_PACKET       2
@@ -76,5 +77,6 @@ struct Bme280SensorPacket {
 struct AckPacket {
     struct PacketHeader header;
 };
+#endif
 
 #endif /* RADIOPROTOCOL_H_ */

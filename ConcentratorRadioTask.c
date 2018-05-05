@@ -84,19 +84,19 @@ static Event_Handle radioOperationEventHandle;
 
 
 
-static ConcentratorRadio_PacketReceivedCallback packetReceivedCallback;
-static union ConcentratorPacket latestRxPacket;
+//static ConcentratorRadio_PacketReceivedCallback packetReceivedCallback;
+//static union ConcentratorPacket latestRxPacket;
 static EasyLink_TxPacket txPacket;
-static struct AckPacket ackPacket;
-static uint8_t concentratorAddress;
+//static struct AckPacket ackPacket;
+//static uint8_t concentratorAddress;
 static int8_t latestRssi;
 
 
 /***** Prototypes *****/
 static void concentratorRadioTaskFunction(UArg arg0, UArg arg1);
 static void rxDoneCallback(EasyLink_RxPacket * rxPacket, EasyLink_Status status);
-static void notifyPacketReceived(union ConcentratorPacket* latestRxPacket);
-static void sendAck(uint8_t latestSourceAddress);
+//static void notifyPacketReceived(union ConcentratorPacket* latestRxPacket);
+//static void sendAck(uint8_t latestSourceAddress);
 
 /* Pin driver handle */
 static PIN_Handle ledPinHandle;
@@ -108,9 +108,12 @@ PIN_Config ledPinTable[] = {
     PIN_TERMINATE
 };
 
-/***** Function definitions *****/
-void ConcentratorRadioTask_init(void) {
+// Public MAC address of the IoT hub.
+uint64_t iotHubAddr = 0;
 
+/***** Function definitions *****/
+void ConcentratorRadioTask_init(void)
+{
     /* Open LED pins */
     ledPinHandle = PIN_open(&ledPinState, ledPinTable);
 	if (!ledPinHandle)
@@ -132,9 +135,9 @@ void ConcentratorRadioTask_init(void) {
     Task_construct(&concentratorRadioTask, concentratorRadioTaskFunction, &concentratorRadioTaskParams, NULL);
 }
 
-void ConcentratorRadioTask_registerPacketReceivedCallback(ConcentratorRadio_PacketReceivedCallback callback) {
-    packetReceivedCallback = callback;
-}
+//void ConcentratorRadioTask_registerPacketReceivedCallback(ConcentratorRadio_PacketReceivedCallback callback) {
+//    packetReceivedCallback = callback;
+//}
 
 static void concentratorRadioTaskFunction(UArg arg0, UArg arg1)
 {
@@ -154,12 +157,13 @@ static void concentratorRadioTaskFunction(UArg arg0, UArg arg1)
      */
 
     /* Set concentrator address */;
-    concentratorAddress = RADIO_CONCENTRATOR_ADDRESS;
-    EasyLink_enableRxAddrFilter(&concentratorAddress, 1, 1);
+//    concentratorAddress = RADIO_CONCENTRATOR_ADDRESS;
+    iotHubAddr = RADIO_CONCENTRATOR_ADDRESS;
+    EasyLink_enableRxAddrFilter((uint8_t *)&iotHubAddr, 8, 1);
 
-    /* Set up Ack packet */
-    ackPacket.header.sourceAddress = concentratorAddress;
-    ackPacket.header.packetType = RADIO_PACKET_TYPE_ACK_PACKET;
+//    /* Set up Ack packet */
+//    ackPacket.header.sourceAddress = concentratorAddress;
+//    ackPacket.header.packetType = RADIO_PACKET_TYPE_ACK_PACKET;
 
     /* Enter receive */
     if(EasyLink_receiveAsync(rxDoneCallback, 0) != EasyLink_Status_Success) {
@@ -172,11 +176,11 @@ static void concentratorRadioTaskFunction(UArg arg0, UArg arg1)
         /* If valid packet received */
         if(events & RADIO_EVENT_VALID_PACKET_RECEIVED) {
 
-            /* Send ack packet */
-            sendAck(latestRxPacket.header.sourceAddress);
-
-            /* Call packet received callback */
-            notifyPacketReceived(&latestRxPacket);
+//            /* Send ack packet */
+//            sendAck(latestRxPacket.header.sourceAddress);
+//
+//            /* Call packet received callback */
+//            notifyPacketReceived(&latestRxPacket);
 
             /* Go back to RX */
             if(EasyLink_receiveAsync(rxDoneCallback, 0) != EasyLink_Status_Success) {
@@ -198,34 +202,34 @@ static void concentratorRadioTaskFunction(UArg arg0, UArg arg1)
     }
 }
 
-static void sendAck(uint8_t latestSourceAddress) {
+//static void sendAck(uint8_t latestSourceAddress) {
+//
+//    /* Set destinationAdress, but use EasyLink layers destination adress capability */
+//    txPacket.dstAddr[0] = latestSourceAddress;
+//
+//    /* Copy ACK packet to payload, skipping the destination adress byte.
+//     * Note that the EasyLink API will implcitily both add the length byte and the destination address byte. */
+//    memcpy(txPacket.payload, &ackPacket.header, sizeof(ackPacket));
+//    txPacket.len = sizeof(ackPacket);
+//
+//    /* Send packet  */
+//    if (EasyLink_transmit(&txPacket) != EasyLink_Status_Success)
+//    {
+//        System_abort("EasyLink_transmit failed");
+//    }
+//}
 
-    /* Set destinationAdress, but use EasyLink layers destination adress capability */
-    txPacket.dstAddr[0] = latestSourceAddress;
-
-    /* Copy ACK packet to payload, skipping the destination adress byte.
-     * Note that the EasyLink API will implcitily both add the length byte and the destination address byte. */
-    memcpy(txPacket.payload, &ackPacket.header, sizeof(ackPacket));
-    txPacket.len = sizeof(ackPacket);
-
-    /* Send packet  */
-    if (EasyLink_transmit(&txPacket) != EasyLink_Status_Success)
-    {
-        System_abort("EasyLink_transmit failed");
-    }
-}
-
-static void notifyPacketReceived(union ConcentratorPacket* latestRxPacket)
-{
-    if (packetReceivedCallback)
-    {
-        packetReceivedCallback(latestRxPacket, latestRssi);
-    }
-}
+//static void notifyPacketReceived(union ConcentratorPacket* latestRxPacket)
+//{
+//    if (packetReceivedCallback)
+//    {
+//        packetReceivedCallback(latestRxPacket, latestRssi);
+//    }
+//}
 
 static void rxDoneCallback(EasyLink_RxPacket * rxPacket, EasyLink_Status status)
 {
-    union ConcentratorPacket* tmpRxPacket;
+//    union ConcentratorPacket* tmpRxPacket;
 
     /* If we received a packet successfully */
     if (status == EasyLink_Status_Success)
@@ -233,6 +237,7 @@ static void rxDoneCallback(EasyLink_RxPacket * rxPacket, EasyLink_Status status)
         /* Save the latest RSSI, which is later sent to the receive callback */
         latestRssi = (int8_t)rxPacket->rssi;
 
+#if 0
         /* Check that this is a valid packet */
         tmpRxPacket = (union ConcentratorPacket*)(rxPacket->payload);
 
@@ -278,7 +283,7 @@ static void rxDoneCallback(EasyLink_RxPacket * rxPacket, EasyLink_Status status)
                                                     rxPacket->payload[19] << 16 |
                                                     rxPacket->payload[20] << 8 |
                                                     rxPacket->payload[21];
-
+#endif
             /* Signal packet received */
             Event_post(radioOperationEventHandle, RADIO_EVENT_VALID_PACKET_RECEIVED);
         }
@@ -299,12 +304,12 @@ static void rxDoneCallback(EasyLink_RxPacket * rxPacket, EasyLink_Status status)
 //            /* Signal packet received */
 //            Event_post(radioOperationEventHandle, RADIO_EVENT_VALID_PACKET_RECEIVED);
 //        }
-        else
-        {
-            /* Signal invalid packet received */
-            Event_post(radioOperationEventHandle, RADIO_EVENT_INVALID_PACKET_RECEIVED);
-        }
-    }
+//        else
+//        {
+//            /* Signal invalid packet received */
+//            Event_post(radioOperationEventHandle, RADIO_EVENT_INVALID_PACKET_RECEIVED);
+//        }
+//    }
     else
     {
         /* Signal invalid packet received */

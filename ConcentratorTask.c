@@ -123,7 +123,7 @@ static uint8_t ledBlinkCnt;
 
 /***** Prototypes *****/
 static void concentratorTaskFunction(UArg arg0, UArg arg1);
-static void packetReceivedCallback(union ConcentratorPacket* packet, int8_t rssi);
+//static void packetReceivedCallback(union ConcentratorPacket* packet, int8_t rssi);
 static void updateLcd(void);
 static void addNewNode(struct AdcSensorNode* node);
 static void updateNode(struct AdcSensorNode* node);
@@ -195,8 +195,8 @@ static void concentratorTaskFunction(UArg arg0, UArg arg1)
         Display_printf(hDisplayLcd, 0, 0, "Waiting for nodes...");
     }
 
-    /* Register a packet received callback with the radio task */
-    ConcentratorRadioTask_registerPacketReceivedCallback(packetReceivedCallback);
+//    /* Register a packet received callback with the radio task */
+//    ConcentratorRadioTask_registerPacketReceivedCallback(packetReceivedCallback);
 
     /* Enter main task loop */
     while(1) {
@@ -220,22 +220,22 @@ static void concentratorTaskFunction(UArg arg0, UArg arg1)
     }
 }
 
-static void packetReceivedCallback(union ConcentratorPacket* packet, int8_t rssi)
-{
-    /* If we recived an ADC sensor packet, for backward compatibility */
-    if (packet->header.packetType == RADIO_PACKET_TYPE_BME280_SENSOR_PACKET)
-    {
-        latestActiveAdcSensorNode.address = packet->header.sourceAddress;
-        latestActiveAdcSensorNode.latestRssi = rssi;
-        latestActiveAdcSensorNode.sensorData.cpuTemp = packet->bme280Packet.cpuTemp;
-        latestActiveAdcSensorNode.sensorData.cpuVolt = packet->bme280Packet.cpuVolt;
-        latestActiveAdcSensorNode.sensorData.bme280Temp = packet->bme280Packet.bme280Temp;
-        latestActiveAdcSensorNode.sensorData.bme280Pressure = packet->bme280Packet.bme280Pressure;
-        latestActiveAdcSensorNode.sensorData.bme280Humidity = packet->bme280Packet.bme280Humidity;
-
-        Event_post(concentratorEventHandle, CONCENTRATOR_EVENT_NEW_ADC_SENSOR_VALUE);
-    }
-}
+//static void packetReceivedCallback(union ConcentratorPacket* packet, int8_t rssi)
+//{
+//    /* If we recived an ADC sensor packet, for backward compatibility */
+//    if (packet->header.packetType == RADIO_PACKET_TYPE_BME280_SENSOR_PACKET)
+//    {
+//        latestActiveAdcSensorNode.address = packet->header.sourceAddress;
+//        latestActiveAdcSensorNode.latestRssi = rssi;
+//        latestActiveAdcSensorNode.sensorData.cpuTemp = packet->bme280Packet.cpuTemp;
+//        latestActiveAdcSensorNode.sensorData.cpuVolt = packet->bme280Packet.cpuVolt;
+//        latestActiveAdcSensorNode.sensorData.bme280Temp = packet->bme280Packet.bme280Temp;
+//        latestActiveAdcSensorNode.sensorData.bme280Pressure = packet->bme280Packet.bme280Pressure;
+//        latestActiveAdcSensorNode.sensorData.bme280Humidity = packet->bme280Packet.bme280Humidity;
+//
+//        Event_post(concentratorEventHandle, CONCENTRATOR_EVENT_NEW_ADC_SENSOR_VALUE);
+//    }
+//}
 
 static uint8_t isKnownNodeAddress(uint8_t address) {
     uint8_t found = 0;

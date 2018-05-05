@@ -36,6 +36,48 @@
 #include "stdint.h"
 #include "RadioProtocol.h"
 
+struct IoTSensorData {
+    int32_t     _cpuTemp;
+    uint32_t    _cpuVolt;
+
+    int32_t     _bme280Temp;
+    uint32_t    _bme280Pressure;
+    uint32_t    _bme280Humidity;
+};
+
+struct IoTSensorConfig {
+    uint16_t    _sampleRate;
+};
+
+/* Fixed target address for IoT Hub: "IoTHub" */
+#define RADIO_CONCENTRATOR_ADDRESS     0x55AA496F54487562
+#define RADIO_EASYLINK_MODULATION     EasyLink_Phy_Custom
+
+#define RADIO_PACKET_TYPE_ACK_PACKET             1
+#define RADIO_PACKET_TYPE_SENSOR_DATA            2
+#define RADIO_PACKET_TYPE_SENSOR_CONF            3
+
+struct PacketHeader {
+    uint64_t _sourceAddress;
+    uint8_t _packetType;
+};
+#define OTA_PACKET_HEADER_SIZE  9
+
+struct AckPacket {
+    struct PacketHeader _header;
+    uint32_t            _result;
+};
+
+struct IoTSensorPacket {
+    struct PacketHeader     _header;
+    struct IoTSensorData    _sensorData;
+};
+
+struct IoTSensorConfigPacket {
+    struct PacketHeader     _header;
+    struct IoTSensorConfig  _sensorConfig;
+};
+
 
 enum ConcentratorRadioOperationStatus {
     ConcentratorRadioStatus_Success,
@@ -43,19 +85,19 @@ enum ConcentratorRadioOperationStatus {
     ConcentratorRadioStatus_FailedNotConnected,
 };
 
-union ConcentratorPacket {
-    struct PacketHeader header;
-    struct AdcSensorPacket adcSensorPacket;
-    struct DualModeSensorPacket dmSensorPacket;
-    struct Bme280SensorPacket bme280Packet;
-};
+//union ConcentratorPacket {
+//    struct PacketHeader header;
+//    struct AdcSensorPacket adcSensorPacket;
+//    struct DualModeSensorPacket dmSensorPacket;
+//    struct Bme280SensorPacket bme280Packet;
+//};
 
-typedef void (*ConcentratorRadio_PacketReceivedCallback)(union ConcentratorPacket* packet, int8_t rssi);
+//typedef void (*ConcentratorRadio_PacketReceivedCallback)(union ConcentratorPacket* packet, int8_t rssi);
 
 /* Create the ConcentratorRadioTask and creates all TI-RTOS objects */
 void ConcentratorRadioTask_init(void);
 
 /* Register the packet received callback */
-void ConcentratorRadioTask_registerPacketReceivedCallback(ConcentratorRadio_PacketReceivedCallback callback);
+//void ConcentratorRadioTask_registerPacketReceivedCallback(ConcentratorRadio_PacketReceivedCallback callback);
 
 #endif /* TASKS_CONCENTRATORRADIOTASKTASK_H_ */
