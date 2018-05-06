@@ -134,7 +134,7 @@ static void printRxedSensorData();
 
 static struct PacketHeader gHeader;
 static struct IoTSensorData gSensorData;
-static uint8_t  gRssi;
+static int8_t  gRssi;
 
 /***** Function definitions *****/
 void ConcentratorTask_init(void) {
